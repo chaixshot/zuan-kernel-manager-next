@@ -617,6 +617,12 @@ class SettingsPreference(context: Context) {
     private val _fpsShowSizeControls = MutableStateFlow(getFpsShowSizeControls())
     val fpsShowSizeControls: StateFlow<Boolean> = _fpsShowSizeControls.asStateFlow()
 
+    private val _fpsPosX = MutableStateFlow(getFpsPosX())
+    val fpsPosX: StateFlow<Int> = _fpsPosX.asStateFlow()
+
+    private val _fpsPosY = MutableStateFlow(getFpsPosY())
+    val fpsPosY: StateFlow<Int> = _fpsPosY.asStateFlow()
+
     // --- UPDATE CHECK (GitHub releases zuanvfx02/zuan-kernel-manager-next) ---
     private val _checkManagerUpdates = MutableStateFlow(getCheckManagerUpdates())
     val checkManagerUpdates: StateFlow<Boolean> = _checkManagerUpdates.asStateFlow()
@@ -688,6 +694,8 @@ class SettingsPreference(context: Context) {
         private const val FPS_SHOW_RECORD_KEY = "fps_show_record"
         private const val FPS_SHOW_SPARK_KEY = "fps_show_spark"
         private const val FPS_SHOW_SIZE_CONTROLS_KEY = "fps_show_size_controls"
+        private const val FPS_POS_X_KEY = "fps_overlay_pos_x"
+        private const val FPS_POS_Y_KEY = "fps_overlay_pos_y"
 
         private const val SHOW_UPDATE_DIALOG_KEY = "show_update_dialog"
         private const val LAST_UPDATE_CHECK_KEY = "last_update_check"
@@ -1110,6 +1118,17 @@ class SettingsPreference(context: Context) {
 
     fun setFpsShowSizeControls(v: Boolean) { prefs.edit { putBoolean(FPS_SHOW_SIZE_CONTROLS_KEY, v) }; _fpsShowSizeControls.value = v }
     private fun getFpsShowSizeControls(): Boolean = prefs.getBoolean(FPS_SHOW_SIZE_CONTROLS_KEY, true)
+
+    fun setFpsPos(x: Int, y: Int) {
+        prefs.edit { 
+            putInt(FPS_POS_X_KEY, x)
+            putInt(FPS_POS_Y_KEY, y)
+        }
+        _fpsPosX.value = x
+        _fpsPosY.value = y
+    }
+    private fun getFpsPosX(): Int = prefs.getInt(FPS_POS_X_KEY, 20)
+    private fun getFpsPosY(): Int = prefs.getInt(FPS_POS_Y_KEY, 100)
 }
 
 private fun SharedPreferences.toFloat(key: String, defValue: Float): Float = try { this.getFloat(key, defValue) } catch (e: Exception) { defValue }

@@ -7,9 +7,12 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.SystemClock
+import android.util.DisplayMetrics
+import android.util.Log
 import com.zuan.kernelmanager.next.utils.RootPersistenceUtils
 import com.zuan.kernelmanager.next.feature.settings.SettingsPreference
 import android.view.Gravity
@@ -82,7 +85,7 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
 
     private lateinit var windowManager: WindowManager
     private var overlayView: ComposeView? = null
-    private lateinit var layoutParams: WindowManager.LayoutParams
+    private lateinit var overlayParams: WindowManager.LayoutParams
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
     override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
     private val store = ViewModelStore()
@@ -198,7 +201,9 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
         com.zuan.kernelmanager.next.core.kernel.KernelRootRuntime.initialize(applicationContext)
         FpsReader.init(applicationContext)
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        layoutParams = createLayoutParams(20, 200)
+        val savedX = settingsPreference.fpsPosX.value
+        val savedY = settingsPreference.fpsPosY.value
+        overlayParams = createLayoutParams(savedX, savedY)
         startForegroundNotification()
         isRunning = true
         FpsOverlayController.setRunning(true)
@@ -207,8 +212,56 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
         intent?.let { readConfig(it) }
-        if (overlayView == null) setupOverlay() else overlayView?.invalidate()
+        if (overlayView == null) {
+            setupOverlay()
+        } else {
+            applyBoundaryConstraints()
+        }
         return START_STICKY
+    }
+
+    private fun getScreenSize(): Pair<Int, Int> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val metrics = windowManager.maximumWindowMetrics
+            metrics.bounds.width() to metrics.bounds.height()
+        } else {
+            val dm = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.getRealMetrics(dm)
+            dm.widthPixels to dm.heightPixels
+        }
+    }
+
+    private fun applyBoundaryConstraints() {
+        overlayView?.post {
+            overlayView?.let { v ->
+                val (screenWidth, screenHeight) = getScreenSize()
+                
+                val viewWidth = v.width.coerceAtLeast(v.measuredWidth)
+                val viewHeight = v.height.coerceAtLeast(v.measuredHeight)
+
+                if (viewWidth <= 0 || viewHeight <= 0) return@let
+
+                val maxX = (screenWidth - viewWidth).coerceAtLeast(0)
+                val safetyMargin = (5 * resources.displayMetrics.density).toInt()
+                val maxY = (screenHeight - viewHeight - safetyMargin).coerceAtLeast(0)
+
+                val oldX = overlayParams.x
+                val oldY = overlayParams.y
+
+                overlayParams.x = overlayParams.x.coerceIn(0, maxX)
+                overlayParams.y = overlayParams.y.coerceIn(0, maxY)
+
+                if (overlayParams.x != oldX || overlayParams.y != oldY) {
+                    try {
+                        windowManager.updateViewLayout(overlayView, overlayParams)
+                        settingsPreference.setFpsPos(overlayParams.x, overlayParams.y)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Update Layout Error: ${e.message}")
+                    }
+                }
+            }
+        }
     }
 
     private fun readConfig(it: Intent) {
@@ -285,16 +338,17 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
                 )
             }
         }
-        windowManager.addView(overlayView, layoutParams)
+        windowManager.addView(overlayView, overlayParams)
+        applyBoundaryConstraints()
     }
 
     /** Geser overlay; posisi preset (center/kanan/bawah) diubah dulu ke koordinat absolut TOP|START. */
     private fun dragBy(dx: Float, dy: Float) {
         val view = overlayView ?: return
-        if (layoutParams.gravity != (Gravity.TOP or Gravity.START)) {
+        if (overlayParams.gravity != (Gravity.TOP or Gravity.START)) {
             val loc = IntArray(2)
             view.getLocationOnScreen(loc)
-            layoutParams.gravity = Gravity.TOP or Gravity.START
+            overlayParams.gravity = Gravity.TOP or Gravity.START
             overlayX = loc[0]; overlayY = loc[1]
         }
         overlayX += dx.toInt(); overlayY += dy.toInt()
@@ -308,27 +362,44 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
         val h = metrics.heightPixels
         val margin = (16 * metrics.density).roundToInt()
         when (p) {
-            "TopLeft" -> { layoutParams.gravity = Gravity.TOP or Gravity.START; layoutParams.x = margin; layoutParams.y = 100 }
-            "TopCenter" -> { layoutParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; layoutParams.x = 0; layoutParams.y = 100 }
-            "TopRight" -> { layoutParams.gravity = Gravity.TOP or Gravity.END; layoutParams.x = margin; layoutParams.y = 100 }
-            "CenterLeft" -> { layoutParams.gravity = Gravity.CENTER_VERTICAL or Gravity.START; layoutParams.x = margin; layoutParams.y = 0 }
-            "Center" -> { layoutParams.gravity = Gravity.CENTER; layoutParams.x = 0; layoutParams.y = 0 }
-            "CenterRight" -> { layoutParams.gravity = Gravity.CENTER_VERTICAL or Gravity.END; layoutParams.x = margin; layoutParams.y = 0 }
-            "BottomLeft" -> { layoutParams.gravity = Gravity.BOTTOM or Gravity.START; layoutParams.x = margin; layoutParams.y = 90 }
-            "BottomCenter" -> { layoutParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; layoutParams.x = 0; layoutParams.y = 90 }
-            "BottomRight" -> { layoutParams.gravity = Gravity.BOTTOM or Gravity.END; layoutParams.x = margin; layoutParams.y = 90 }
+            "TopLeft" -> { overlayParams.gravity = Gravity.TOP or Gravity.START; overlayParams.x = margin; overlayParams.y = 100 }
+            "TopCenter" -> { overlayParams.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; overlayParams.x = 0; overlayParams.y = 100 }
+            "TopRight" -> { overlayParams.gravity = Gravity.TOP or Gravity.END; overlayParams.x = margin; overlayParams.y = 100 }
+            "CenterLeft" -> { overlayParams.gravity = Gravity.CENTER_VERTICAL or Gravity.START; overlayParams.x = margin; overlayParams.y = 0 }
+            "Center" -> { overlayParams.gravity = Gravity.CENTER; overlayParams.x = 0; overlayParams.y = 0 }
+            "CenterRight" -> { overlayParams.gravity = Gravity.CENTER_VERTICAL or Gravity.END; overlayParams.x = margin; overlayParams.y = 0 }
+            "BottomLeft" -> { overlayParams.gravity = Gravity.BOTTOM or Gravity.START; overlayParams.x = margin; overlayParams.y = 90 }
+            "BottomCenter" -> { overlayParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL; overlayParams.x = 0; overlayParams.y = 90 }
+            "BottomRight" -> { overlayParams.gravity = Gravity.BOTTOM or Gravity.END; overlayParams.x = margin; overlayParams.y = 90 }
         }
-        overlayX = layoutParams.x
-        overlayY = layoutParams.y
-        if (overlayView != null) windowManager.updateViewLayout(overlayView, layoutParams)
+        overlayX = overlayParams.x
+        overlayY = overlayParams.y
+        if (overlayView != null) {
+            windowManager.updateViewLayout(overlayView, overlayParams)
+            settingsPreference.setFpsPos(overlayParams.x, overlayParams.y)
+            applyBoundaryConstraints()
+        }
     }
 
     private fun updateOverlayPosition(xPos: Int, yPos: Int) {
-        layoutParams.x = xPos
-        layoutParams.y = yPos
+        val (screenWidth, screenHeight) = getScreenSize()
+        val viewWidth = overlayView?.width?.coerceAtLeast(overlayView?.measuredWidth ?: 0) ?: 200
+        val viewHeight = overlayView?.height?.coerceAtLeast(overlayView?.measuredHeight ?: 0) ?: 100
+        val maxX = (screenWidth - viewWidth).coerceAtLeast(0)
+        val safetyMargin = (5 * resources.displayMetrics.density).toInt()
+        val maxY = (screenHeight - viewHeight - safetyMargin).coerceAtLeast(0)
+
+        overlayParams.x = xPos.coerceIn(0, maxX)
+        overlayParams.y = yPos.coerceIn(0, maxY)
         if (overlayView != null) {
-            windowManager.updateViewLayout(overlayView, layoutParams)
+            windowManager.updateViewLayout(overlayView, overlayParams)
+            settingsPreference.setFpsPos(overlayParams.x, overlayParams.y)
         }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyBoundaryConstraints()
     }
 
     private fun createLayoutParams(xPos: Int, yPos: Int): WindowManager.LayoutParams {
