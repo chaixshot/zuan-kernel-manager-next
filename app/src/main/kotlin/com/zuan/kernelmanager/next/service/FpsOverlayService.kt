@@ -575,12 +575,12 @@ fun MainOverlayContent(
                 OverlayIconButton(Icons.Rounded.OpenInFull, onToggleCollapse)
             }
         } else {
-        Column(modifier = modifier.widthIn(min = (90f * widthScale).dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(modifier = modifier.widthIn(min = (120f * widthScale).dp, max = (450f * widthScale).dp), horizontalAlignment = Alignment.CenterHorizontally) {
             when (styleMode) {
-                0 -> AndroidStyleOverlay(orientation, customColor, fontSize, metrics, values)
-                1 -> PcStyleOverlay(pcVariant, fontSize, customColor, metrics, values)
-                2 -> MiniMonitorOverlay(fontSize, customColor, metrics, values)
-                else -> PcStyleOverlay(pcVariant, fontSize, customColor, metrics, values)
+                0 -> AndroidStyleOverlay(orientation, customColor, fontSize, widthScale, metrics, values)
+                1 -> PcStyleOverlay(pcVariant, fontSize, widthScale, customColor, metrics, values)
+                2 -> MiniMonitorOverlay(fontSize, widthScale, customColor, metrics, values)
+                else -> PcStyleOverlay(pcVariant, fontSize, widthScale, customColor, metrics, values)
             }
 
             if (metrics.recordControl || showSizeControls) {
@@ -670,7 +670,7 @@ fun RecordControlButton(isRec: Boolean, isPaused: Boolean, context: Context, int
 }
 
 @Composable
-fun AndroidStyleOverlay(orientation: Int, color: Color, size: Float, m: MetricsState, v: LiveValues) {
+fun AndroidStyleOverlay(orientation: Int, color: Color, size: Float, widthScale: Float, m: MetricsState, v: LiveValues) {
     val items = buildList<Pair<String, String>> {
         if (m.fps) add("FPS" to String.format("%.0f", v.fps))
         if (m.frameTime) add("Frame" to String.format("%.1f ms", v.frameTime))
@@ -689,8 +689,8 @@ fun AndroidStyleOverlay(orientation: Int, color: Color, size: Float, m: MetricsS
         if (m.render) add("API" to v.renderer)
         if (m.jank) add("JANK" to String.format("%.1f%%", v.jankPercent))
     }
-    if (orientation == 0) Column(horizontalAlignment = Alignment.Start) { items.forEach { AndroidRow(it.first, it.second, color, size) } }
-    else Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.widthIn(max = 420.dp)) { items.forEach { AndroidRow(it.first, it.second, color, size) } }
+    if (orientation == 0) Column(horizontalAlignment = Alignment.Start, modifier = Modifier.widthIn(min = (100f * widthScale).dp)) { items.forEach { AndroidRow(it.first, it.second, color, size) } }
+    else Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.widthIn(max = (400f * widthScale).dp)) { items.forEach { AndroidRow(it.first, it.second, color, size) } }
 }
 
 @Composable
@@ -702,7 +702,7 @@ fun AndroidRow(label: String, value: String, color: Color, size: Float) {
 }
 
 @Composable
-fun PcStyleOverlay(variant: Int, size: Float, accent: Color, m: MetricsState, v: LiveValues) {
+fun PcStyleOverlay(variant: Int, size: Float, widthScale: Float, accent: Color, m: MetricsState, v: LiveValues) {
     val mono = FontFamily.Monospace
     val green = Color(0xFF8CFF6A)
     val cyan = Color(0xFF67D9FF)
@@ -818,8 +818,8 @@ private fun TelemetryStyle(size: Float, accent: Color, m: MetricsState, v: LiveV
 }
 
 @Composable
-fun MiniMonitorOverlay(size: Float, color: Color, m: MetricsState, v: LiveValues) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+fun MiniMonitorOverlay(size: Float, widthScale: Float, color: Color, m: MetricsState, v: LiveValues) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.widthIn(min = (90f * widthScale).dp)) {
         if (m.fps) Text("${v.fps.roundToInt()}", color = Color.White, fontSize = (size * 1.5f).sp, fontWeight = FontWeight.Black)
         Text("FPS", color = Color.Gray, fontSize = (size * 0.58f).sp)
         Row(horizontalArrangement = Arrangement.Center) {

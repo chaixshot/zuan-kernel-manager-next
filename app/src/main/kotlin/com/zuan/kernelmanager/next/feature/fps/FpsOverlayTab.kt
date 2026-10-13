@@ -261,7 +261,7 @@ fun FpsManagerOverlayContent(
                 Card(Modifier.fillMaxWidth().padding(horizontal = 16.dp), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = cardBg)) {
                     Column(Modifier.padding(16.dp)) {
                         AppearanceSlider(Icons.Default.FormatSize, stringResource(R.string.fps_text_size), textSize, 8f..30f, stringResource(R.string.fps_appearance_value_sp, textSize.toInt()), activeColor, { textSize = it }, { updateService() })
-                        Spacer(Modifier.height(14.dp)); AppearanceSlider(Icons.Default.AspectRatio, stringResource(R.string.fps_width_scale), widthScale, 0.7f..2.5f, stringResource(R.string.fps_appearance_value_scale, widthScale), activeColor, { widthScale = it }, { updateService() })
+                        Spacer(Modifier.height(14.dp)); AppearanceSlider(Icons.Default.AspectRatio, stringResource(R.string.fps_width_scale), widthScale, 0f..2.5f, stringResource(R.string.fps_appearance_value_scale, widthScale), activeColor, { widthScale = it }, { updateService() })
                         Spacer(Modifier.height(14.dp)); AppearanceSlider(Icons.Default.Opacity, stringResource(R.string.fps_background_alpha), bgAlpha, 0f..1f, stringResource(R.string.fps_appearance_value_percent, (bgAlpha * 100).toInt()), activeColor, { bgAlpha = it }, { updateService() })
                         Spacer(Modifier.height(14.dp)); AppearanceSlider(Icons.Default.RoundedCorner, stringResource(R.string.fps_corner_radius), cornerRadius, 0f..28f, stringResource(R.string.fps_appearance_value_dp, cornerRadius.toInt()), activeColor, { cornerRadius = it }, { updateService() })
                         Spacer(Modifier.height(8.dp))
