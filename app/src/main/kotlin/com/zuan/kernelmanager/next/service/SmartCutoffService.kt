@@ -65,6 +65,8 @@ class SmartCutoffService : Service() {
 
         when (intent.action) {
             ACTION_STOP_SERVICE -> {
+                getSharedPreferences("battery_prefs", Context.MODE_PRIVATE)
+                    .edit().putBoolean("cutoff_enabled", false).apply()
                 stopSelf()
                 return START_NOT_STICKY
             }

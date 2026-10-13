@@ -515,6 +515,9 @@ class SettingsPreference(context: Context) {
     }
 
     // --- FPS OVERLAY STATES ---
+    private val _fpsOverlayEnabled = MutableStateFlow(getFpsOverlayEnabled())
+    val fpsOverlayEnabled: StateFlow<Boolean> = _fpsOverlayEnabled.asStateFlow()
+
     private val _fpsStyle = MutableStateFlow(getFpsStyle())
     val fpsStyle: StateFlow<Int> = _fpsStyle.asStateFlow()
 
@@ -659,6 +662,7 @@ class SettingsPreference(context: Context) {
     }
 
     companion object {
+        private const val FPS_OVERLAY_ENABLED_KEY = "fps_overlay_enabled"
         private const val FPS_STYLE_KEY = "fps_overlay_style"
         private const val FPS_ORIENTATION_KEY = "fps_overlay_orientation"
         private const val FPS_COLOR_KEY = "fps_overlay_color"
@@ -1017,6 +1021,9 @@ class SettingsPreference(context: Context) {
     private fun getAcceptedRisk(): Boolean = prefs.getBoolean(ACCEPTED_RISK_KEY, false)
 
     // --- FPS OVERLAY GETTERS/SETTERS ---
+    fun setFpsOverlayEnabled(enabled: Boolean) { prefs.edit { putBoolean(FPS_OVERLAY_ENABLED_KEY, enabled) }; _fpsOverlayEnabled.value = enabled }
+    private fun getFpsOverlayEnabled(): Boolean = prefs.getBoolean(FPS_OVERLAY_ENABLED_KEY, false)
+
     fun setFpsStyle(style: Int) { prefs.edit { putInt(FPS_STYLE_KEY, style) }; _fpsStyle.value = style }
     private fun getFpsStyle(): Int = prefs.getInt(FPS_STYLE_KEY, 0)
 
