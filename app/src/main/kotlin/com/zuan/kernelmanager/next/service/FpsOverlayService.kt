@@ -422,8 +422,16 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
             val channel = NotificationChannel(channelId, "FPS Overlay", NotificationManager.IMPORTANCE_LOW)
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
+        val openIntent = Intent(this, com.zuan.kernelmanager.next.ui.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("TARGET_ROUTE", com.zuan.kernelmanager.next.ui.navigation.NavigationRoute.FpsManager.route)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
         val notification = Notification.Builder(this, channelId)
             .setContentTitle(getString(R.string.lp_notification_overlay))
+            .setContentIntent(pendingIntent)
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .build()
         startForeground(1, notification)

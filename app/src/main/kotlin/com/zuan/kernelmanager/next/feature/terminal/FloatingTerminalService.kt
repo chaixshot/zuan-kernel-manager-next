@@ -191,9 +191,17 @@ class FloatingTerminalService : Service(), LifecycleOwner, ViewModelStoreOwner, 
             val channel = NotificationChannel(channelId, "Floating Terminal", NotificationManager.IMPORTANCE_LOW)
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
+        val intent = Intent(this, com.zuan.kernelmanager.next.ui.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("TARGET_ROUTE", com.zuan.kernelmanager.next.ui.navigation.NavigationRoute.Terminal.route)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
         return Notification.Builder(this, channelId)
-            .setContentTitle(getString(R.string.app_name))  // <-- GANTI INI
-            .setContentText(getString(R.string.terminal_overlay_active))  // <-- GANTI INI
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(R.string.terminal_overlay_active))
+            .setContentIntent(pendingIntent)
             .setSmallIcon(R.mipmap.ic_launcher)
             .build()
     }

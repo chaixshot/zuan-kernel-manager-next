@@ -93,6 +93,7 @@ class SmartCutoffService : Service() {
             .setContentTitle(getString(R.string.lp_notification_smart_cutoff))
             .setContentText(getString(R.string.lp_smart_cutoff_monitoring, limitThreshold))
             .setSmallIcon(R.drawable.ic_battery_android_frame_shield)
+            .setContentIntent(getOpenAppPendingIntent())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .build()
@@ -146,11 +147,22 @@ class SmartCutoffService : Service() {
             .setContentTitle(getString(R.string.lp_notification_smart_cutoff))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_battery_android_frame_shield)
+            .setContentIntent(getOpenAppPendingIntent())
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .build()
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(1, notification)
+    }
+
+    private fun getOpenAppPendingIntent(): PendingIntent {
+        val openIntent = Intent(this, com.zuan.kernelmanager.next.ui.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("TARGET_ROUTE", com.zuan.kernelmanager.next.ui.navigation.NavigationRoute.BatteryController.route)
+        }
+        return PendingIntent.getActivity(
+            this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
