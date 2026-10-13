@@ -11,6 +11,7 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.SystemClock
 import com.zuan.kernelmanager.next.utils.RootPersistenceUtils
+import com.zuan.kernelmanager.next.feature.settings.SettingsPreference
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -109,6 +110,9 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
     private var showCpuFreq by mutableStateOf(false)
     private var showGpuLoad by mutableStateOf(false)
     private var showGpuFreq by mutableStateOf(false)
+    private var showGpuUsage by mutableStateOf(false)
+    private var showCpuTemp by mutableStateOf(false)
+    private var showGpuTemp by mutableStateOf(false)
     private var showWatts by mutableStateOf(true)
     private var showTemp by mutableStateOf(true)
     private var showRam by mutableStateOf(true)
@@ -143,9 +147,49 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
     private var initialTouchX = 0f
     private var initialTouchY = 0f
 
+    private lateinit var settingsPreference: SettingsPreference
+
+    private fun loadInitialSettings() {
+        settingsPreference = SettingsPreference.getInstance(applicationContext)
+        styleMode = settingsPreference.fpsStyle.value
+        pcVariant = settingsPreference.fpsPcVariant.value
+        androidOrientation = settingsPreference.fpsOrientation.value
+        colorHex = settingsPreference.fpsColor.value
+        textSizeSp = settingsPreference.fpsSize.value
+        widthScale = settingsPreference.fpsWidthScale.value
+        bgAlpha = settingsPreference.fpsAlpha.value
+        cornerRadius = settingsPreference.fpsRadius.value
+        bgMode = settingsPreference.fpsBgMode.value
+        showBorder = settingsPreference.fpsBorder.value
+        showShadow = settingsPreference.fpsShadow.value
+        sampleIntervalMs = settingsPreference.fpsInterval.value
+        position = settingsPreference.fpsPosition.value
+
+        showFps = settingsPreference.fpsShowFps.value
+        showFrameTime = settingsPreference.fpsShowFrameTime.value
+        showOnePercent = settingsPreference.fpsShowOnePercent.value
+        showZeroOnePercent = settingsPreference.fpsShowZeroOnePercent.value
+        showCpu = settingsPreference.fpsShowCpu.value
+        showCpuFreq = settingsPreference.fpsShowCpuFreq.value
+        showGpuLoad = settingsPreference.fpsShowGpuUsage.value
+        showGpuFreq = settingsPreference.fpsShowGpuFreq.value
+        showWatts = settingsPreference.fpsShowWatts.value
+        showTemp = settingsPreference.fpsShowTemp.value
+        showRam = settingsPreference.fpsShowRam.value
+        showRamPercent = settingsPreference.fpsShowRamPercent.value
+        showBattery = settingsPreference.fpsShowBattery.value
+        showRefresh = settingsPreference.fpsShowRefresh.value
+        showRender = settingsPreference.fpsShowRender.value
+        showJank = settingsPreference.fpsShowJank.value
+        showRecordControl = settingsPreference.fpsShowRecord.value
+        showSparkline = settingsPreference.fpsShowSpark.value
+        showSizeControls = settingsPreference.fpsShowSizeControls.value
+    }
+
     override fun onCreate() {
         super.onCreate()
         RootPersistenceUtils.applyRootExemptions(this)
+        loadInitialSettings()
         savedStateRegistryController.performRestore(null)
         overlayScale = prefs.getFloat("scale", 1f).coerceIn(MIN_SCALE, MAX_SCALE)
         collapsed = prefs.getBoolean("collapsed", false)
@@ -664,7 +708,7 @@ fun PcStyleOverlay(variant: Int, size: Float, accent: Color, m: MetricsState, v:
     val cyan = Color(0xFF67D9FF)
     val yellow = Color(0xFFFFD95A)
     val white = Color.White
-    Column(modifier = Modifier.widthIn(min = 150.dp, max = 300.dp)) {
+    Column(modifier = Modifier.widthIn(min = (140f * widthScale).dp, max = (420f * widthScale).dp)) {
         when (variant) {
             0 -> NvidiaCounterStyle(size, accent, m, v, mono, green, white, yellow)
             1 -> NvidiaDetailedStyle(size, accent, m, v, mono, green, cyan, yellow, white)
@@ -831,5 +875,46 @@ private fun Sparkline(points: List<Float>, color: Color, modifier: Modifier) {
             if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
         }
         drawPath(path, color, style = Stroke(width = 2.2f, cap = StrokeCap.Round))
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true)
+@Composable
+fun MainOverlayContentPreview() {
+    com.zuan.kernelmanager.next.ui.theme.ZuanKernelManagerTheme {
+        MainOverlayContent(
+            styleMode = 1,
+            pcVariant = 0,
+            orientation = 0,
+            colorHex = "#00FF00",
+            fontSize = 14f,
+            bgAlpha = 0.55f,
+            widthScale = 0.3f,
+            cornerRadius = 10f,
+            bgMode = 0,
+            showBorder = true,
+            showShadow = false,
+            sampleIntervalMs = 1000L,
+            metrics = MetricsState(
+                fps = true,
+                frameTime = true,
+                onePercent = true,
+                zeroOnePercent = false,
+                cpu = true,
+                cpuFreq = false,
+                gpuLoad = true,
+                gpuFreq = false,
+                watt = true,
+                temp = true,
+                ram = true,
+                ramPercent = false,
+                battery = false,
+                refresh = true,
+                render = false,
+                jank = false,
+                recordControl = true,
+                sparkline = true
+            )
+        )
     }
 }
