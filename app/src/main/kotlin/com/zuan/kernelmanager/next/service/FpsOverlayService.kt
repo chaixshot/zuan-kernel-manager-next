@@ -1,12 +1,16 @@
 package com.zuan.kernelmanager.next.service
 
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.SystemClock
+import com.zuan.kernelmanager.next.utils.RootPersistenceUtils
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -141,6 +145,7 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
 
     override fun onCreate() {
         super.onCreate()
+        RootPersistenceUtils.applyRootExemptions(this)
         savedStateRegistryController.performRestore(null)
         overlayScale = prefs.getFloat("scale", 1f).coerceIn(MIN_SCALE, MAX_SCALE)
         collapsed = prefs.getBoolean("collapsed", false)
@@ -307,6 +312,36 @@ class FpsOverlayService : LifecycleService(), SavedStateRegistryOwner, ViewModel
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .build()
         startForeground(1, notification)
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (isRunning) {
+            val restartServiceIntent = Intent(applicationContext, FpsOverlayService::class.java).apply {
+                setPackage(packageName)
+            }
+            val restartServicePendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                PendingIntent.getForegroundService(
+                    applicationContext,
+                    1,
+                    restartServiceIntent,
+                    PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                )
+            } else {
+                PendingIntent.getService(
+                    applicationContext,
+                    1,
+                    restartServiceIntent,
+                    PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                )
+            }
+            val alarmService = applicationContext.getSystemService(ALARM_SERVICE) as AlarmManager
+            alarmService.set(
+                AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                SystemClock.elapsedRealtime() + 1000,
+                restartServicePendingIntent
+            )
+        }
     }
 
     override fun onDestroy() {

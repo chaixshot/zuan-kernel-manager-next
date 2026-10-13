@@ -21,6 +21,7 @@ import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import com.zuan.kernelmanager.next.utils.RootPersistenceUtils
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -178,8 +179,12 @@ class MainActivity : AppCompatActivity() {
     private val checkRoot = Runnable {
         Shell.getShell { shell ->
             isRoot = shell.isRoot
-            // Only block the app when the user explicitly chose ROOT mode.
-            if (!isRoot && WorkingModeManager.current.hasRoot) { showRootDialog = true }
+            if (isRoot) {
+                RootPersistenceUtils.applyRootExemptions(this@MainActivity)
+            } else {
+                // Only block the app when the user explicitly chose ROOT mode.
+                if (!isRoot && WorkingModeManager.current.hasRoot) { showRootDialog = true }
+            }
         }
     }
 

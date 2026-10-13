@@ -10,15 +10,19 @@ package com.zuan.kernelmanager.next.feature.terminal
 
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ButtonDefaults
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
+import com.zuan.kernelmanager.next.utils.RootPersistenceUtils
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.compose.foundation.background
@@ -81,6 +85,7 @@ class FloatingTerminalService : Service(), LifecycleOwner, ViewModelStoreOwner, 
 
     override fun onCreate() {
         super.onCreate()
+        RootPersistenceUtils.applyRootExemptions(this)
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         isRunning = true
@@ -144,6 +149,30 @@ class FloatingTerminalService : Service(), LifecycleOwner, ViewModelStoreOwner, 
         windowManager.addView(composeView, overlayParams)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        if (isRunning) {
+            val restartServiceIntent = Intent(applicationContext, FloatingTerminalService::class.java).apply {
+                setPackage(packageName)
+            }
+            val restartServicePendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                PendingIntent.getForegroundService(
+                    applicationContext, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                )
+            } else {
+                PendingIntent.getService(
+                    applicationContext, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                )
+            }
+            val alarmService = applicationContext.getSystemService(ALARM_SERVICE) as AlarmManager
+            alarmService.set(
+                AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                SystemClock.elapsedRealtime() + 1000,
+                restartServicePendingIntent
+            )
+        }
     }
 
     override fun onDestroy() {

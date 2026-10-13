@@ -7,6 +7,7 @@
  */
 package com.zuan.kernelmanager.next.service
 
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -29,6 +30,7 @@ import com.topjohnwu.superuser.Shell
 import com.zuan.kernelmanager.next.ui.MainActivity
 import com.zuan.kernelmanager.next.R
 import com.zuan.kernelmanager.next.library.device.battery.BatteryUtils
+import com.zuan.kernelmanager.next.utils.RootPersistenceUtils
 import com.zuan.kernelmanager.next.library.device.monitor.MonitorReader
 import kotlin.math.abs
 import java.util.concurrent.ExecutorService
@@ -132,6 +134,7 @@ class BatteryMonitorService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        RootPersistenceUtils.applyRootExemptions(this)
         isRunning = true
         createNotificationChannel()
         
@@ -335,12 +338,18 @@ class BatteryMonitorService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         val restartServiceIntent = Intent(applicationContext, this.javaClass)
         restartServiceIntent.setPackage(packageName)
-        val restartServicePendingIntent = PendingIntent.getService(
-            applicationContext, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val alarmService = applicationContext.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        val restartServicePendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PendingIntent.getForegroundService(
+                applicationContext, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } else {
+            PendingIntent.getService(
+                applicationContext, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+        val alarmService = applicationContext.getSystemService(ALARM_SERVICE) as android.app.AlarmManager
         alarmService.set(
-            android.app.AlarmManager.ELAPSED_REALTIME,
+            AlarmManager.ELAPSED_REALTIME_WAKEUP,
             SystemClock.elapsedRealtime() + 1000,
             restartServicePendingIntent
         )

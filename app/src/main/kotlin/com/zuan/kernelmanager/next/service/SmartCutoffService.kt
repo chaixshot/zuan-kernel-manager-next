@@ -7,18 +7,23 @@
  */
 package com.zuan.kernelmanager.next.service
 
+import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import com.zuan.kernelmanager.next.R
 import com.zuan.kernelmanager.next.library.device.battery.BatteryUtils
+import com.zuan.kernelmanager.next.utils.RootPersistenceUtils
 
 class SmartCutoffService : Service() {
 
@@ -48,6 +53,11 @@ class SmartCutoffService : Service() {
                 handleBatteryLogic(level, status)
             }
         }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        RootPersistenceUtils.applyRootExemptions(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -141,6 +151,28 @@ class SmartCutoffService : Service() {
             .build()
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(1, notification)
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        val restartServiceIntent = Intent(applicationContext, SmartCutoffService::class.java).apply {
+            setPackage(packageName)
+        }
+        val restartServicePendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PendingIntent.getForegroundService(
+                applicationContext, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } else {
+            PendingIntent.getService(
+                applicationContext, 1, restartServiceIntent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
+        val alarmService = applicationContext.getSystemService(ALARM_SERVICE) as AlarmManager
+        alarmService.set(
+            AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            SystemClock.elapsedRealtime() + 1000,
+            restartServicePendingIntent
+        )
     }
 
     override fun onDestroy() {
